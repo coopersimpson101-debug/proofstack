@@ -1,0 +1,16 @@
+{
+ "generated": 143293033,
+ "distinct": 15632316,
+ "left": 0,
+ "depth": 61,
+ "violated": null,
+ "no_error": true,
+ "trace_states": 0,
+ "finished": true,
+ "model": "core3",
+ "seconds": 2189.6,
+ "workers": 10,
+ "exit": 0,
+ "machine": "Windows AMD64, 12 logical CPUs",
+ "date": "2026-11-26"
+}

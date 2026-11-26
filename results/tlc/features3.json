@@ -1,0 +1,14 @@
+{
+ "violated": null,
+ "no_error": false,
+ "trace_states": 0,
+ "finished": false,
+ "generated": 218150463,
+ "model": "features3",
+ "seconds": 2400.8,
+ "workers": 10,
+ "exit": -1,
+ "machine": "Windows AMD64, 12 logical CPUs",
+ "date": "2026-11-26",
+ "distinct_so_far": 26380031
+}

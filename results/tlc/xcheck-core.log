@@ -1,0 +1,29 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 81 and seed 6541623670163501423 with 1 worker on 12 cores with 3630MB heap and 64MB offheap memory .
+Parsing file MCRaftStore.tla
+Parsing file RaftStore.tla
+Parsing file Naturals.tla
+Parsing file Integers.tla
+Parsing file Sequences.tla
+Parsing file FiniteSets.tla
+Parsing file TLC.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module RaftStore
+Semantic processing of module MCRaftStore
+Starting... (2026-11-26 16:27:00)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-26 16:27:00.
+Progress(13) at 2026-11-26 16:27:03: 29,015 states generated (29,015 s/min), 6,330 distinct states found (6,330 ds/min), 2,656 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 5.8E-10
+  based on the actual fingerprints:  val = 2.9E-10
+308603 states generated, 39962 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 23.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 6 and the 95th percentile is 3).
+Finished in 20s at (2026-11-26 16:27:20)

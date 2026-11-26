@@ -1,0 +1,13 @@
+{
+ "violated": null,
+ "no_error": false,
+ "trace_states": 0,
+ "sim_states_checked": 9898182,
+ "finished": true,
+ "model": "sim-all3",
+ "seconds": 59.7,
+ "workers": 10,
+ "exit": 0,
+ "machine": "Windows AMD64, 12 logical CPUs",
+ "date": "2026-11-26"
+}

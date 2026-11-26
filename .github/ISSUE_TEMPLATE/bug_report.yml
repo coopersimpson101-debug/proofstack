@@ -1,0 +1,31 @@
+name: Bug report
+description: A proof, model, checker or test is wrong (or a claim in the README is)
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong?
+      description: Which theorem / invariant / test / claim, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Commands, TLC model name, trace file, or random seed.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output
+      render: text
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "e.g. Ubuntu 24.04, Lean 4.35.0, tla2tools 1.7.4, Java 21, commit abc1234"
+    validations:
+      required: true

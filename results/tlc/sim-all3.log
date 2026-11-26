@@ -1,0 +1,20 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running Random Simulation with seed 1 with 10 workers on 12 cores with 3630MB heap and 64MB offheap memory .
+Parsing file MCRaftStore.tla
+Parsing file RaftStore.tla
+Parsing file Naturals.tla
+Parsing file Integers.tla
+Parsing file Sequences.tla
+Parsing file FiniteSets.tla
+Parsing file TLC.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module RaftStore
+Semantic processing of module MCRaftStore
+Starting... (2026-11-26 16:39:32)
+Computed 1 initial states...
+Progress: 9898182 states checked.
+Finished in 59s at (2026-11-26 16:40:31)

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 646" width="1000" height="646">
+<rect width="1000" height="646" rx="10" fill="#0d1117" stroke="#30363d"/>
+<rect width="1000" height="32" rx="10" fill="#161b22"/><rect y="22" width="1000" height="10" fill="#161b22"/>
+<circle cx="20" cy="16" r="6" fill="#f85149"/><circle cx="40" cy="16" r="6" fill="#d29922"/><circle cx="60" cy="16" r="6" fill="#3fb950"/>
+<text x="500.0" y="21" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" fill="#8b949e" text-anchor="middle">proofstack — real output (Windows AMD64, 12 logical CPUs, 2026-11-26)</text>
+<text x="18" y="58" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ grep INVARIANTS tla/models/core3.cfg</text>
+<text x="18" y="77" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#C084FC" xml:space="preserve">  INVARIANTS ElectionSafety LogMatching LeaderCompleteness StateMachineSafety</text>
+<text x="18" y="96" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#C084FC" xml:space="preserve">             LinearizableReads NoImplAssertion ConfigMatchesLog IndexSanity</text>
+<text x="18" y="115" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ python scripts/run_tlc.py xcheck-membership</text>
+<text x="18" y="134" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#3fb950" xml:space="preserve">  Model checking completed. No error has been found.</text>
+<text x="18" y="153" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  2685035 states generated, 323846 distinct states found, 0 states left on queue.</text>
+<text x="18" y="172" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  The depth of the complete state graph search is 38.</text>
+<text x="18" y="191" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ python scripts/run_tlc.py xcheck-snapshots</text>
+<text x="18" y="210" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#3fb950" xml:space="preserve">  Model checking completed. No error has been found.</text>
+<text x="18" y="229" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  9026505 states generated, 975216 distinct states found, 0 states left on queue.</text>
+<text x="18" y="248" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  The depth of the complete state graph search is 25.</text>
+<text x="18" y="267" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ python scripts/run_tlc.py core3</text>
+<text x="18" y="286" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#3fb950" xml:space="preserve">  Model checking completed. No error has been found.</text>
+<text x="18" y="305" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  143293033 states generated, 15632316 distinct states found, 0 states left on queue.</text>
+<text x="18" y="324" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  The depth of the complete state graph search is 61.</text>
+<text x="18" y="343" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ python scripts/run_tlc.py mut-figure8      # deliberately broken variant</text>
+<text x="18" y="362" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#f85149" xml:space="preserve">  Error: Invariant LeaderCompleteness is violated.</text>
+<text x="18" y="381" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  State 35: &lt;Next line 490, col 6 to line 490, col 42 of module RaftStore&gt;</text>
+<text x="18" y="400" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ python scripts/run_tlc.py mut-vote-any-log      # deliberately broken variant</text>
+<text x="18" y="419" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#f85149" xml:space="preserve">  Error: Invariant LeaderCompleteness is violated.</text>
+<text x="18" y="438" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  State 13: &lt;Next line 490, col 6 to line 490, col 42 of module RaftStore&gt;</text>
+<text x="18" y="457" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ python scripts/validate_traces.py --sim traces/sim --cluster traces/cluster</text>
+<text x="18" y="476" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#3fb950" xml:space="preserve">  {&quot;traces&quot;: 260, &quot;ok&quot;: 260, &quot;events&quot;: 2280238, &quot;failures&quot;: 0, &quot;seconds&quot;: 48.9}</text>
+<text x="18" y="495" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ cd lean &amp;&amp; lake build</text>
+<text x="18" y="514" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#3fb950" xml:space="preserve">  Build completed successfully (11 jobs).</text>
+<text x="18" y="533" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ grep -c &#x27;^theorem&#x27; OrbitProofs/*.lean; grep -c sorry OrbitProofs/*.lean</text>
+<text x="18" y="552" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Buddy.lean:50</text>
+<text x="18" y="571" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Mmu.lean:27</text>
+<text x="18" y="590" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Buddy.lean:0</text>
+<text x="18" y="609" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Mmu.lean:0</text>
+</svg>

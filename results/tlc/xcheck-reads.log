@@ -1,0 +1,32 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 123 and seed -1115336310507472399 with 1 worker on 12 cores with 3630MB heap and 64MB offheap memory .
+Parsing file MCRaftStore.tla
+Parsing file RaftStore.tla
+Parsing file Naturals.tla
+Parsing file Integers.tla
+Parsing file Sequences.tla
+Parsing file FiniteSets.tla
+Parsing file TLC.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module RaftStore
+Semantic processing of module MCRaftStore
+Starting... (2026-11-26 16:27:23)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-26 16:27:24.
+Progress(12) at 2026-11-26 16:27:27: 50,894 states generated (50,894 s/min), 12,099 distinct states found (12,099 ds/min), 6,656 states left on queue.
+Progress(17) at 2026-11-26 16:28:27: 1,476,949 states generated (1,426,055 s/min), 225,661 distinct states found (213,562 ds/min), 69,611 states left on queue.
+Progress(20) at 2026-11-26 16:29:27: 2,904,393 states generated (1,427,444 s/min), 376,566 distinct states found (150,905 ds/min), 68,179 states left on queue.
+Progress(23) at 2026-11-26 16:30:27: 4,287,285 states generated (1,382,892 s/min), 478,303 distinct states found (101,737 ds/min), 18,133 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.1E-7
+  based on the actual fingerprints:  val = 8.1E-9
+4552999 states generated, 491330 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 27.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 8 and the 95th percentile is 3).
+Finished in 03min 18s at (2026-11-26 16:30:41)

@@ -1,0 +1,16 @@
+{
+ "generated": 173586904,
+ "distinct": 21185127,
+ "left": 0,
+ "depth": 43,
+ "violated": null,
+ "no_error": true,
+ "trace_states": 0,
+ "finished": true,
+ "model": "mut-membership",
+ "seconds": 2016.2,
+ "workers": 10,
+ "exit": 0,
+ "machine": "Windows AMD64, 12 logical CPUs",
+ "date": "2026-11-26"
+}

@@ -1,0 +1,10 @@
+name = "orbitproofs"
+version = "0.1.0"
+defaultTargets = ["OrbitProofs", "orbitmodel"]
+
+[[lean_lib]]
+name = "OrbitProofs"
+
+[[lean_exe]]
+name = "orbitmodel"
+root = "Main"

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+
+# Lean / Lake
+lean/.lake/
+
+# TLC
+tla/states/
+tla/*_TTrace_*.tla
+*.st
+
+# generated traces (large; regenerate with scripts/gen_*_traces.py)
+traces/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

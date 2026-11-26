@@ -1,0 +1,16 @@
+{
+ "generated": 2685035,
+ "distinct": 323846,
+ "left": 0,
+ "depth": 38,
+ "violated": null,
+ "no_error": true,
+ "trace_states": 0,
+ "finished": true,
+ "model": "xcheck-membership",
+ "seconds": 140.5,
+ "workers": 1,
+ "exit": 0,
+ "machine": "Windows AMD64, 12 logical CPUs",
+ "date": "2026-11-26"
+}

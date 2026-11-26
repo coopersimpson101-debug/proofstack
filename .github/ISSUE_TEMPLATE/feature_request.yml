@@ -1,0 +1,21 @@
+name: Feature request
+description: Something else to specify, prove, model-check or validate
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What should be verified?
+      description: The component (raftstore, orbit-os, ...) and the property.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter?
+      description: Which bug class would it rule out?
+  - type: textarea
+    id: how
+    attributes:
+      label: Suggested approach
+      description: TLC model, Lean proof, trace validation, differential or bounded test, ...

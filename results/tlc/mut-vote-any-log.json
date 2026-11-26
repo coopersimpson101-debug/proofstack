@@ -1,0 +1,15 @@
+{
+ "generated": 9543,
+ "distinct": 2152,
+ "left": 913,
+ "depth": 14,
+ "violated": "LeaderCompleteness",
+ "no_error": false,
+ "trace_states": 13,
+ "model": "mut-vote-any-log",
+ "seconds": 2.7,
+ "workers": 8,
+ "exit": 12,
+ "machine": "Windows AMD64, 12 logical CPUs",
+ "date": "2026-11-26"
+}

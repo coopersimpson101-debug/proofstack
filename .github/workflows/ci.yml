@@ -1,0 +1,102 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  TLA_VERSION: v1.7.4
+  # the exact upstream code these checks are about
+  ORBIT_OS_REF: ba8bac1f87896fe770f30c26fae043060e61fa1f
+  RAFTSTORE_REF: 3a545c882c4946c4e5d219301108f3437d133adb
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pytest pyflakes
+      - name: Lint
+        run: python -m pyflakes proofstack scripts tests harness
+      - name: Generated TLC configs are up to date
+        run: python -m pytest -q tests/test_spec_vs_tlc.py::test_cfg_files_are_generated_from_models
+
+  tlc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
+      - name: Fetch tla2tools.jar from the TLA+ GitHub release
+        run: curl -fsSL -o tla2tools.jar "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
+      - name: TLC, cross-check models (exhaustive, bounded)
+        env: { TLA2TOOLS: tla2tools.jar, TLC_WORKERS: "4" }
+        run: python scripts/run_tlc.py --xcheck
+      - name: TLC must find the bugs in the mutated specs
+        env: { TLA2TOOLS: tla2tools.jar, TLC_WORKERS: "4" }
+        run: python scripts/run_tlc.py mut-vote-any-log mut-figure8
+      - run: pip install pytest
+      - name: Python transcription generates the same state graphs as TLC
+        run: python -m pytest -q tests/test_spec_vs_tlc.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: tlc-results, path: results/tlc }
+
+  lean-and-c:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: coopersimpson101-debug/orbit-os
+          ref: ${{ env.ORBIT_OS_REF }}
+          path: orbit-os
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install elan (Lean toolchain manager) from its official repository
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          sh elan-init.sh -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Lean proofs (lake build) and the orbitmodel executable
+        working-directory: lean
+        run: lake build
+      - name: No sorry / admit / native_decide in the proofs
+        run: "! grep -nE '\\b(sorry|admit|native_decide)\\b' lean/OrbitProofs/*.lean"
+      - run: pip install pytest ziglang
+      - name: Build the C drivers for orbit-os buddy.c and mmu.c with zig cc
+        run: python harness/build.py --orbit-os orbit-os
+      - name: Differential tests (Lean model vs C) and bounded exhaustive MMU check
+        run: python -m pytest -q tests/test_buddy_diff.py tests/test_mmu_diff.py tests/test_mmu_bounded.py
+
+  traces:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: coopersimpson101-debug/raftstore
+          ref: ${{ env.RAFTSTORE_REF }}
+          path: raftstore
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pytest
+      - name: Record simulator traces (6 scenarios x 10 seeds)
+        run: python scripts/gen_sim_traces.py --raftstore raftstore --out traces/sim --seeds 10 --steps 1500
+      - name: Record multi-process traces (3 runs, leader killed twice per run)
+        run: python scripts/gen_cluster_traces.py --raftstore raftstore --out traces/cluster --runs 3
+      - name: Validate every trace against the spec
+        run: python scripts/validate_traces.py --sim traces/sim --cluster traces/cluster --out traces/summary.json
+      - name: Checker unit and mutation tests
+        env: { RAFTSTORE_DIR: raftstore }
+        run: python -m pytest -q tests/test_tracecheck.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: trace-summary, path: traces/summary.json }

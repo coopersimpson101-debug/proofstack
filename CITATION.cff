@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "proofstack: formal verification of raftstore's Raft and orbit-os's memory manager"
+authors:
+  - name: "the proofstack authors"
+type: software
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/coopersimpson101-debug/proofstack"
+keywords:
+  - tla-plus
+  - model-checking
+  - trace-validation
+  - lean4
+  - raft
+  - buddy-allocator
+  - page-tables

@@ -1,0 +1,16 @@
+{
+ "generated": 4552999,
+ "distinct": 491330,
+ "left": 0,
+ "depth": 27,
+ "violated": null,
+ "no_error": true,
+ "trace_states": 0,
+ "finished": true,
+ "model": "xcheck-reads",
+ "seconds": 208.1,
+ "workers": 1,
+ "exit": 0,
+ "machine": "Windows AMD64, 12 logical CPUs",
+ "date": "2026-11-26"
+}

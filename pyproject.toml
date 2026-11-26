@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proofstack"
+version = "0.1.0"
+description = "TLA+ model checking and trace validation of raftstore's Raft; Lean proofs of orbit-os's buddy allocator and page tables"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = []  # the checkers are stdlib-only
+authors = [{ name = "the proofstack authors" }]
+keywords = ["tla-plus", "tlc", "model-checking", "trace-validation", "lean4", "formal-verification",
+            "raft", "buddy-allocator", "page-tables"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Testing",
+  "Topic :: System :: Distributed Computing",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.urls]
+Homepage = "https://github.com/coopersimpson101-debug/proofstack"
+Repository = "https://github.com/coopersimpson101-debug/proofstack"
+Issues = "https://github.com/coopersimpson101-debug/proofstack/issues"
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+proofstack-tracecheck = "proofstack.tracecheck:main"
+
+[tool.setuptools.packages.find]
+include = ["proofstack*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
