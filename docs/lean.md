@@ -2,8 +2,12 @@
 
 Lean 4.35.0, no Mathlib, no `sorry` / `admit` / `native_decide`; `results/lean_axioms.txt` lists
 the axioms the headline theorems depend on (only Lean's standard `propext`, `Classical.choice`,
-`Quot.sound`). The code under verification is orbit-os `main` at
-`ba8bac1f87896fe770f30c26fae043060e61fa1f`: `kernel/mm/buddy.c` and `kernel/mm/mmu.c`.
+`Quot.sound`). The code under verification is orbit-os
+`1a8385b07ccd95ecef07be80a916c75073fb171e` (branch `fix/buddy-overlap-map-range`, which fixes the
+two bugs below): `kernel/mm/buddy.c`, `kernel/lib/a64pt.c` (the page-table builder, moved out of
+`kernel/arch/aarch64/mmu.c` by that commit) and `mmu_init` in `mmu.c`. The bugs were found on
+`main` at `ba8bac1`; the original algorithms stay in the model as `addRangeV1` / `mapRangeV1`, with
+the theorems that exhibit the bugs.
 
 ## Buddy allocator (`lean/OrbitProofs/Buddy.lean`)
 
@@ -22,27 +26,36 @@ block has its buddy free at the same order (complete coalescing); and
 | theorem | statement (informally) |
 |---|---|
 | `init_inv` | `buddy_init` establishes `Inv` |
-| `addRange_inv` | `buddy_add_range` of pages no block covers preserves `Inv` (incl. `managed` accounting) |
+| `addRange_inv` | `buddy_add_range` of **any** range preserves `Inv` (incl. `managed` accounting): pages already in a free or allocated block are skipped. No hypothesis; the original algorithm needed a non-overlap hypothesis (`addRangeV1_inv`) |
+| `candidate_disj`, `shrink_spec` | the fixed loop's candidate block (start not inside a block, no block head inside it) is disjoint from every block |
 | `alloc_inv` | `buddy_alloc` preserves `Inv` (split loop: upper halves become free blocks) |
 | `free_inv` | `buddy_free` preserves `Inv` (coalescing loop) |
 | `alloc_some`, `alloc_aligned` | a returned block of order `o` starts at a multiple of `2^o`, lies inside the span and is recorded as allocated |
 | `no_overlap` | under `Inv` two different allocated blocks share no page (nor does an allocated and a free block) |
 | `free_reject` | freeing an index that heads no allocated block (double / wild free) returns -1 and changes nothing |
 | `alloc_free_roundtrip` | `free(alloc(s, o))` succeeds and restores the free lists (up to order within a list), the allocation set and both counters |
-| `bug_state_free`, `bug_breaks_invariant`, `bug_double_allocation` | the overlapping-add bug, below |
+| `bug_state_free`, `bug_breaks_invariant`, `bug_double_allocation` | the overlapping-add bug on `addRangeV1`, below |
+| `fixed_state_free`, `fixed_no_double_allocation` | the same sequence on the fixed `addRange`: 4 free pages, one order-2 block, no second allocation |
 
-### Bug found: overlapping `buddy_add_range` double-manages pages
+### Bug found: overlapping `buddy_add_range` double-manages pages (fixed in orbit-os `1a8385b` (branch `fix/buddy-overlap-map-range`))
 
 `buddy_add_range`'s comment says overlapping adds are skipped ("already managed"), but the check
 only looks at the metadata byte of each candidate block's *head* page. A range that starts inside a
 free block passes, so its pages are inserted a second time. After `add(0, 4)` and `add(1, 1)` on a
 4-page span there are 5 free pages, `buddy_check()` still returns 0, and `alloc(0)` → page 1 and
 `alloc(2)` → pages 0–3 are two live allocations sharing page 1. The Lean theorems state exactly this
-for the model; `tests/test_buddy_diff.py::test_overlapping_add_range_bug` shows the C code does the
-same, and random overlapping adds make the C driver crash on its corrupted intrusive lists.
+for the model (`addRangeV1`); at orbit-os `ba8bac1` the differential test showed the C code does
+the same, and random overlapping adds made the C driver crash on its corrupted intrusive lists.
 `mm_init` only adds the disjoint holes between sorted reserved ranges, so the kernel does not hit
-this today — it is a latent API bug (fix: walk every page of the candidate block, or reject
-overlapping adds).
+this today — it was a latent API bug.
+
+**Fix** (orbit-os `1a8385b` (branch `fix/buddy-overlap-map-range`)): `buddy_add_range` skips a page that lies inside a managed block
+(found from the naturally aligned candidate head at each order), and shrinks a candidate block
+while some block head lies inside it. A candidate that starts in no block and contains no block
+head overlaps no block, which is what lets `addRange_inv` drop its hypothesis. Regression tests:
+orbit-os `tests/test_buddy.c` (the 4-page counterexample and 200 random overlapping rounds checked
+against a page bitmap) and proofstack `test_overlapping_add_range_fixed` /
+`test_overlapping_add_sequences_agree` (C and Lean agree line by line on overlapping sessions).
 
 ## Page tables (`lean/OrbitProofs/Mmu.lean`)
 
@@ -58,26 +71,32 @@ arguments, and `walk` is the stage-1 translation.
 | `same_page`, `same_block` | below 2^48, two addresses use the same L0–L3 (L0–L2) slots iff they are in the same 4 KiB page (2 MiB block) |
 | `step_spec` | one loop step maps exactly the not-yet-mapped part of `[va, va+adv) ∩ [va, end)`, advances by ≥ 4 KiB, changes nothing else |
 | `mapLoop_spec`, `mapRange_spec` | **map_range correctness**: for page-aligned arguments, every previously unmapped page of `[va, va+size)` translates to `pa + (x − va)` with attributes `prot`; every other translation is unchanged (first mapping wins) |
-| `mapRange_spec_unaligned`, `unaligned_bug` | for unaligned arguments the C code maps `[ALIGN_DOWN(va), ALIGN_DOWN(va)+ALIGN_UP(size))`, which can miss the last touched page |
+| `mapRange_spec_unaligned`, `mapRange_covers`, `unaligned_fixed` | for arbitrary (unaligned) arguments the fixed `map_range` maps exactly `[ALIGN_DOWN(va), ALIGN_UP(va+size))`: every byte of the range is translated |
+| `mapRangeV1_spec_unaligned`, `unaligned_bug` | the original code mapped `[ALIGN_DOWN(va), ALIGN_DOWN(va)+ALIGN_UP(size))`, which can miss the last touched page |
 | `mapAll_spec` | a sequence of `map_range` calls on any table = first region containing the address |
 | `ttbr0_separation` | for any well-ordered kernel image layout, `mmu_init`'s identity map translates every mapped address to itself, and an address is EL0-accessible **iff** it lies in the user-text or user-stack section: kernel text/rodata/data, the rest of RAM, the DTB and MMIO are never EL0-accessible |
 | `mapRange_kva`, `walk_shift` | the TTBR1 higher-half alias (`0xffff_0000_0000_0000 + pa`) behaves like the same mapping at `pa` |
 | `ttbr1_el1_only`, `wx_all`, `el0_flags` | no TTBR1 page is EL0-accessible; every attribute set the kernel uses is W^X at EL1 and EL0 |
 
-### Bug found (latent): unaligned ranges lose their last page
+### Bug found (latent): unaligned ranges lose their last page (fixed in orbit-os `1a8385b` (branch `fix/buddy-overlap-map-range`))
 
 `map_range` aligns `va` down but computes the end as `ALIGN_DOWN(va) + ALIGN_UP(size)`, so
 `map_range(0x1800, size 0x1000)` maps only the page at 0x1000 although the range also covers
 0x2000–0x27ff. `mmu_init` passes the DTB's address and size unaligned; on the boards supported
 today the DTB lies inside RAM, which is mapped too, so nothing faults. With the DTB outside the
 mapped RAM at an unaligned address, the real `mmu_init` leaves the blob's last page unmapped
-(`tests/test_mmu_bounded.py::test_unaligned_dtb_outside_ram_loses_last_page`). Fix: compute
-`end = ALIGN_UP(va + size, 4K)` before aligning `va`.
+(shown at orbit-os `ba8bac1` by the bounded check of the real `mmu_init`).
+
+**Fix** (orbit-os `1a8385b` (branch `fix/buddy-overlap-map-range`)): `end = ALIGN_UP(va + size, 4K)` is computed before `va` is aligned;
+the builder moved to the portable `kernel/lib/a64pt.c` with its own host test
+(`tests/test_a64pt.c`). The rv64 port's `sv39_map` already computed the end this way.
+Regression tests here: `test_unaligned_range_fixed` and
+`test_unaligned_dtb_outside_ram_is_fully_mapped`.
 
 ## What ties the models to the C code (tested, not proved)
 
-* **Differential tests.** `harness/` compiles orbit-os's `buddy.c` unmodified and `mmu.c` with only
-  its three inline-asm statements removed (TLB / I-cache maintenance and the `AT S1E1R` probe) using
+* **Differential tests.** `harness/` compiles orbit-os's `buddy.c` and `a64pt.c` unmodified and `mmu.c`
+  with only its three inline-asm statements removed (TLB / I-cache maintenance and the `AT S1E1R` probe) using
   `zig cc` for the host. The Lean executable `orbitmodel` runs the very definitions the theorems are
   about. Both read the same random command sequences and must print identical results: every
   allocation address, free return code, `free_pages` and all eleven `nfree[o]` after every

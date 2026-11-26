@@ -16,7 +16,7 @@
 with TLC and validated against hundreds of real execution traces; and Lean 4 proofs of
 [orbit-os](https://github.com/coopersimpson101-debug/orbit-os)'s buddy allocator and page-table code,
 tied to the real C by differential and bounded exhaustive tests. Along the way it found two real
-(latent) bugs in orbit-os.
+(latent) bugs in orbit-os, since fixed there.
 
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
@@ -51,11 +51,11 @@ tied to the real C by differential and bounded exhaustive tests. Along the way i
 - **260 real traces refine the spec** — 240 from raftstore's deterministic simulator in six fault
   scenarios and 20 from real 3-process clusters whose leader is `kill -9`'d twice: 2,280,238 events,
   1,059,476 messages, 1,170 elections and 1,728 restarts, each checked field by field.
-- **77 Lean theorems, 0 `sorry`**: the buddy allocator's invariant (alignment, no overlap,
-  free + allocated = managed, complete coalescing) is preserved by init / add_range / alloc / free,
+- **88 Lean theorems, 0 `sorry`**: the buddy allocator's invariant (alignment, no overlap,
+  free + allocated = managed, complete coalescing) is preserved by init / add_range (of any range) / alloc / free,
   alloc-then-free restores the state; `map_range` maps exactly the intended pages (first mapping wins),
   and `mmu_init`'s identity map never makes kernel memory EL0-accessible.
-- **Models tied to the C code**: orbit-os's `buddy.c` and `mmu.c`, compiled with `zig cc`, agree with
+- **Models tied to the C code**: orbit-os's `buddy.c`, `a64pt.c` and `mmu.c`, compiled with `zig cc`, agree with
   the verified Lean model on every output of thousands of random operations, and every 4 KiB page of
   the low 4 GiB, MMIO and higher-half windows of the real `mmu_init` is checked against the intended map.
 
@@ -105,7 +105,8 @@ flowchart LR
   end
   subgraph orbit-os
     buddy[mm/buddy.c] --> zig[zig cc host drivers]
-    mmu[mm/mmu.c] --> zig
+    pt[lib/a64pt.c] --> zig
+    mmu[arch/aarch64/mmu.c] --> zig
   end
   exe <-. differential tests .-> zig
 ```
@@ -193,7 +194,7 @@ the spec.
 <sub>Windows AMD64, 12 logical CPUs, 2026-11-26; validation took 49 s with 6 processes.</sub>
 <!-- /TRACE-TABLE -->
 
-**Lean:** 77 theorems (50 buddy, 27 page tables), `lake build` with no `sorry`; axioms of the
+**Lean:** 88 theorems (58 buddy, 30 page tables), `lake build` with no `sorry`; axioms of the
 headline theorems in [`results/lean_axioms.txt`](results/lean_axioms.txt).
 
 **Differential and bounded tests against the C code** (`tests/`): buddy — 300 random sessions ×
@@ -206,10 +207,16 @@ windows (2.1 M pages for qemu-virt) equals the intended mapping.
 
 ## Bugs found
 
+Both orbit-os bugs were found on orbit-os `ba8bac1` and are fixed in orbit-os
+[`1a8385b`](https://github.com/coopersimpson101-debug/orbit-os/commit/1a8385b07ccd95ecef07be80a916c75073fb171e)
+(branch `fix/buddy-overlap-map-range`), which proofstack now pins. The Lean model keeps the original
+algorithms (`addRangeV1`, `mapRangeV1`) and the theorems that exhibit the bugs; with the fix,
+`Buddy.addRange_inv` holds for every range, without the non-overlap hypothesis it needed before.
+
 | where | what | severity | evidence |
 |---|---|---|---|
-| orbit-os `buddy_add_range` | an add that starts inside an existing free block re-inserts its pages: 5 free pages in a 4-page span, `buddy_check()` still 0, page 1 handed out twice; random overlapping adds crash the C allocator | latent: `mm_init` only adds disjoint holes | `Buddy.bug_*` theorems, `test_overlapping_add_range_bug` |
-| orbit-os `map_range` | end computed as `ALIGN_DOWN(va) + ALIGN_UP(size)`: an unaligned range loses its last page; `mmu_init` passes the DTB unaligned | latent: the DTB lies inside mapped RAM on both boards | `Mmu.unaligned_bug`, `test_unaligned_dtb_outside_ram_loses_last_page` |
+| orbit-os `buddy_add_range` | an add that starts inside an existing free block re-inserts its pages: 5 free pages in a 4-page span, `buddy_check()` still 0, page 1 handed out twice; random overlapping adds crash the C allocator | latent: `mm_init` only adds disjoint holes; **fixed** in orbit-os `1a8385b` | `Buddy.bug_*` theorems (on `addRangeV1`); regression: `Buddy.fixed_*`, `test_overlapping_add_range_fixed` |
+| orbit-os `map_range` | end computed as `ALIGN_DOWN(va) + ALIGN_UP(size)`: an unaligned range loses its last page; `mmu_init` passes the DTB unaligned | latent: the DTB lies inside mapped RAM on both boards; **fixed** in orbit-os `1a8385b` | `Mmu.unaligned_bug` (on `mapRangeV1`); regression: `Mmu.unaligned_fixed`, `test_unaligned_dtb_outside_ram_is_fully_mapped` |
 | raftstore restart | a crash while one Ready batch is being written leaves only a prefix of it in the WAL | safe (acks are sent after `save()`), but outside the spec's Restart; first found as 10 rejected traces | [docs/raft-spec.md](docs/raft-spec.md#finding-a-crash-in-the-middle-of-persisting-one-ready-batch-leaves-a-torn-suffix) |
 | raftstore commit rule | the §5.4.2 current-term rule is almost redundant: the leader no-op plus "send everything up to the end" means acks never stop at an old-term index except under the 64-entry message cap | observation | [docs/raft-spec.md](docs/raft-spec.md#finding-the-current-term-commit-rule-is-almost-redundant-in-raftstore) |
 

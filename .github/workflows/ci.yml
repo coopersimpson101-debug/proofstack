@@ -10,7 +10,7 @@ permissions:
 env:
   TLA_VERSION: v1.7.4
   # the exact upstream code these checks are about
-  ORBIT_OS_REF: ba8bac1f87896fe770f30c26fae043060e61fa1f
+  ORBIT_OS_REF: 1a8385b07ccd95ecef07be80a916c75073fb171e
   RAFTSTORE_REF: 3a545c882c4946c4e5d219301108f3437d133adb
 
 jobs:

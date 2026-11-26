@@ -29,8 +29,8 @@
 <text x="18" y="495" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ cd lean &amp;&amp; lake build</text>
 <text x="18" y="514" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#3fb950" xml:space="preserve">  Build completed successfully (11 jobs).</text>
 <text x="18" y="533" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#e6edf3" xml:space="preserve">$ grep -c &#x27;^theorem&#x27; OrbitProofs/*.lean; grep -c sorry OrbitProofs/*.lean</text>
-<text x="18" y="552" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Buddy.lean:50</text>
-<text x="18" y="571" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Mmu.lean:27</text>
+<text x="18" y="552" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Buddy.lean:58</text>
+<text x="18" y="571" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Mmu.lean:30</text>
 <text x="18" y="590" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Buddy.lean:0</text>
 <text x="18" y="609" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#8b949e" xml:space="preserve">  OrbitProofs/Mmu.lean:0</text>
 </svg>

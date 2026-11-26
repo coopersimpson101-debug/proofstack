@@ -7,7 +7,7 @@ complete counter state (free_pages, nfree[0..10]) after each operation.
 import os
 import random
 
-from drivers import c_buddy, lean_model, run, run_raw
+from drivers import c_buddy, lean_model, run
 
 SEQS = int(os.environ.get("BUDDY_DIFF_SEQS", 300))
 OPS = int(os.environ.get("BUDDY_DIFF_OPS", 200))
@@ -101,37 +101,33 @@ def test_alloc_then_free_restores_counters():
         assert [x.split()[:12] for x in res] == [x.split() for x in run([lean_model(), "buddy"], seq)]
 
 
-def test_overlapping_add_phase_agrees():
-    """For overlapping (buggy) adds the model still reproduces buddy_add_range exactly: same
-    free-page count and per-order free-list lengths. Afterwards the C allocator's intrusive
-    free lists can contain the same page twice, which the model's block lists do not represent,
-    so allocation sequences on such states are not compared; the C driver is only observed
-    (it frequently crashes on its corrupted lists)."""
+def test_overlapping_add_sequences_agree():
+    """Overlapping adds (fixed in orbit-os 1a8385b): the model and the C code agree on every line
+    of whole sessions, the C self-check passes after every operation, and no session ever has
+    more free pages than the span."""
     rng = random.Random(99)
-    crashed = overcommitted = 0
-    for _ in range(200):
-        cmds = random_session(rng, overlapping=True)
-        add_phase = cmds[:cmds.index("state") + 1]
-        c = run([c_buddy()], add_phase)
-        ln = run([lean_model(), "buddy"], add_phase)
-        assert c[-1].split()[:12] == ln[-1].split()
-        n = int(add_phase[0].split()[1])
-        overcommitted += int(c[-1].split()[0]) > n
-        rc, _ = run_raw([c_buddy()], cmds)
-        crashed += rc != 0
-    assert overcommitted > 0
-    print(f"overlapping adds: {overcommitted}/200 sessions with more free pages than the span has; "
-          f"C driver crashed in {crashed}/200 full sessions")
+    cmds = []
+    for _ in range(SEQS // 3):
+        cmds += random_session(rng, overlapping=True)
+    c_out, _ = compare(cmds)
+    n = 0
+    for cmd, line in zip(cmds, c_out):
+        if cmd.startswith("init"):
+            n = int(cmd.split()[1])
+        if cmd == "state":
+            f = line.split()
+            assert f[-1] == "0" and int(f[0]) <= n
 
 
-def test_overlapping_add_range_bug():
-    """Real bug in buddy_add_range: re-adding a range that starts inside an existing free block
-    manages its pages twice. buddy_check() does not notice, and the same page is handed out by
-    two live allocations (Lean: Buddy.bug_state_free, bug_breaks_invariant,
-    bug_double_allocation)."""
+def test_overlapping_add_range_fixed():
+    """Regression for the bug proofstack found in buddy_add_range (orbit-os <= 49ede1e):
+    re-adding a range that starts inside an existing free block managed its pages twice --
+    add(0,4) then add(1,1) gave 5 free pages and page 1 was handed out twice (Lean:
+    Buddy.bug_state_free / bug_double_allocation on addRangeV1). Fixed in orbit-os 1a8385b
+    (Lean: Buddy.fixed_state_free / fixed_no_double_allocation, Buddy.addRange_inv)."""
     cmds = ["init 4", "add 0 4", "add 1 1", "state", "alloc 0", "alloc 2", "state"]
     c = run([c_buddy()], cmds)
     ln = run([lean_model(), "buddy"], cmds)
-    assert c[3] == "5 1 0 1 0 0 0 0 0 0 0 0 0"          # 5 free pages in a 4-page span, check = 0
-    assert c[4] == "1" and c[5] == "0"                  # page 1 is inside both [1,2) and [0,4)
+    assert c[3] == "4 0 0 1 0 0 0 0 0 0 0 0 0"          # 4 free pages, one order-2 block
+    assert c[4] == "0" and c[5] == "-1"                 # no second, overlapping allocation
     assert [x.split()[:12] for x in c] == [x.split() for x in ln]

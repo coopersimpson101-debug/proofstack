@@ -5,7 +5,7 @@
 <text x="64" y="170" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-weight="700" font-size="84" fill="#e6edf3">proofstack</text>
 <text x="66" y="222" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="24" fill="#8b949e">TLA+ model checking, trace validation and Lean proofs</text>
 <text x="66" y="256" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="24" fill="#8b949e">for raftstore (Raft) and orbit-os (buddy allocator, MMU)</text>
-<text x="66" y="330" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="18" fill="#C084FC">17,462,670 distinct states  ·  260 traces / 2,280,238 events  ·  77 Lean theorems</text>
+<text x="66" y="330" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="18" fill="#C084FC">17,462,670 distinct states  ·  260 traces / 2,280,238 events  ·  88 Lean theorems</text>
 <rect x="900" y="176.5" width="48" height="153.5" rx="3" fill="#C084FC" fill-opacity="0.48"/>
 <text x="924.0" y="348" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="#8b949e" text-anchor="middle">x-core</text>
 <rect x="958" y="146.2" width="48" height="183.8" rx="3" fill="#C084FC" fill-opacity="0.61"/>

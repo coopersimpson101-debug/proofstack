@@ -98,16 +98,45 @@ def fitOrder (i e : Nat) : Nat → Nat → Nat
   | fuel + 1, o =>
     if o + 1 < ORDERS ∧ i % 2 ^ (o + 1) = 0 ∧ i + 2 ^ (o + 1) ≤ e then fitOrder i e fuel (o + 1) else o
 
-/-- `b->meta[idx] & (META_FREE | META_ALLOC)` -/
-def isHead (s : St) (i : Nat) : Bool := (s.free ++ s.alloc).any (fun b => b.idx == i)
+/-- orbit-os ≤ `49ede1e`: `b->meta[idx] & (META_FREE | META_ALLOC)`, checked on the head only -/
+def isHeadV1 (s : St) (i : Nat) : Bool := (s.free ++ s.alloc).any (fun b => b.idx == i)
 
+/-- the original `buddy_add_range` loop (orbit-os ≤ `49ede1e`), kept as the record of the bug -/
+def addLoopV1 (e : Nat) : Nat → St → Nat → St
+  | 0, s, _ => s
+  | fuel + 1, s, i =>
+    if i < e then
+      if isHeadV1 s i then addLoopV1 e fuel s (i + 1)
+      else
+        let o := fitOrder i e ORDERS 0
+        addLoopV1 e fuel (freeBlock ORDERS { s with managed := s.managed + 2 ^ o } i o) (i + 2 ^ o)
+    else s
+
+def addRangeV1 (s : St) (i n : Nat) : St :=
+  let e := min (i + n) s.npages
+  addLoopV1 e (e - i) s i
+
+/-- `managed_block_end(b, p)`: end of the free or allocated block containing page `p` -/
+def coverEnd (s : St) (p : Nat) : Option Nat :=
+  ((s.free ++ s.alloc).find? (fun b => decide (b.idx ≤ p ∧ p < b.idx + 2 ^ b.ord))).map (fun b => b.idx + 2 ^ b.ord)
+
+/-- `has_head_in(b, i, n)`: does some managed block start in `[i, i + n)`? -/
+def hasHeadIn (s : St) (i n : Nat) : Bool := (s.free ++ s.alloc).any (fun b => decide (i ≤ b.idx ∧ b.idx < i + n))
+
+/-- `while (order > 0 && has_head_in(b, idx, 1 << order)) order--;` -/
+def shrink (s : St) (i : Nat) : Nat → Nat
+  | 0 => 0
+  | o + 1 => if hasHeadIn s i (2 ^ (o + 1)) then shrink s i o else o + 1
+
+/-- the `buddy_add_range` loop of orbit-os `1a8385b` (fixed): already-managed pages are skipped -/
 def addLoop (e : Nat) : Nat → St → Nat → St
   | 0, s, _ => s
   | fuel + 1, s, i =>
     if i < e then
-      if isHead s i then addLoop e fuel s (i + 1)
-      else
-        let o := fitOrder i e ORDERS 0
+      match coverEnd s i with
+      | some j => addLoop e fuel s j
+      | none =>
+        let o := shrink s i (fitOrder i e ORDERS 0)
         addLoop e fuel (freeBlock ORDERS { s with managed := s.managed + 2 ^ o } i o) (i + 2 ^ o)
     else s
 
@@ -660,9 +689,9 @@ theorem fitOrder_spec : ∀ (fuel : Nat) (i e o : Nat), o < ORDERS → 2 ^ o ∣
       exact fitOrder_spec fuel i e (o + 1) hc.1 (Nat.dvd_of_mod_eq_zero hc.2.1) hc.2.2
     · exact ⟨h1, h2, h3⟩
 
-theorem isHead_false {s : St} {i e : Nat} (hi : i < e)
-    (hr : ∀ c ∈ blocks s, ∀ p, i ≤ p → p < e → ¬ covers c p) : isHead s i = false := by
-  unfold isHead
+theorem isHeadV1_false {s : St} {i e : Nat} (hi : i < e)
+    (hr : ∀ c ∈ blocks s, ∀ p, i ≤ p → p < e → ¬ covers c p) : isHeadV1 s i = false := by
+  unfold isHeadV1
   rw [Bool.eq_false_iff]
   intro h
   rw [List.any_eq_true] at h
@@ -670,15 +699,20 @@ theorem isHead_false {s : St} {i e : Nat} (hi : i < e)
   have : c.idx = i := by simpa using hci
   exact hr c hc i (Nat.le_refl _) hi ⟨by omega, by have := pow_pos' c.ord; omega⟩
 
-theorem addLoop_inv : ∀ (fuel : Nat) (e : Nat) (s : St) (i : Nat),
+theorem freeBlock_npages : ∀ (fu : Nat) (s : St) (i o : Nat), (freeBlock fu s i o).npages = s.npages := by
+  intro fu; induction fu with
+  | zero => intro s i o; simp [freeBlock, push]
+  | succ n ih => intro s i o; simp only [freeBlock]; split <;> (try split) <;> (try split) <;> simp [push, ih, unlink]
+
+theorem addLoopV1_inv : ∀ (fuel : Nat) (e : Nat) (s : St) (i : Nat),
     e ≤ s.npages → Inv s → (∀ c ∈ blocks s, ∀ p, i ≤ p → p < e → ¬ covers c p) →
-    Inv (addLoop e fuel s i)
+    Inv (addLoopV1 e fuel s i)
   | 0, _, s, _, _, h, _ => h
   | fuel + 1, e, s, i, he, h, hr => by
-    simp only [addLoop]
+    simp only [addLoopV1]
     split
     · rename_i hi
-      rw [isHead_false hi hr]
+      rw [isHeadV1_false hi hr]
       simp only [Bool.false_eq_true, ite_false]
       have ⟨f1, f2, f3⟩ := fitOrder_spec ORDERS i e 0 (by unfold ORDERS; omega) (Nat.one_dvd _) (by simp; omega)
       generalize fitOrder i e ORDERS 0 = o at f1 f2 f3
@@ -692,12 +726,7 @@ theorem addLoop_inv : ∀ (fuel : Nat) (e : Nat) (s : St) (i : Nat),
             exact hr c hc p hp.1 (by omega) hq)
           exact this)
         (by simp [h.2])
-      apply addLoop_inv fuel e _ _ (by
-        have : ∀ fu (s : St) i o, (freeBlock fu s i o).npages = s.npages := by
-          intro fu; induction fu with
-          | zero => intro s i o; simp [freeBlock, push]
-          | succ n ih => intro s i o; simp only [freeBlock]; split <;> (try split) <;> (try split) <;> simp [push, ih, unlink]
-        rw [this]; simpa using he) hfb
+      apply addLoopV1_inv fuel e _ _ (by rw [freeBlock_npages]; simpa using he) hfb
       intro c hc p hp1 hp2 hcv
       have := freeBlock_covered ORDERS { s with managed := s.managed + 2 ^ o } i o p f2 ⟨c, hc, hcv⟩
       rcases this with ⟨c0, hc0, hcv0⟩ | hcv0
@@ -705,12 +734,79 @@ theorem addLoop_inv : ∀ (fuel : Nat) (e : Nat) (s : St) (i : Nat),
       · unfold covers at hcv0; simp at hcv0; omega
     · exact h
 
-/-- `buddy_add_range` of a range that overlaps no managed page preserves the invariant. -/
-theorem addRange_inv {s : St} {i n : Nat} (h : Inv s)
-    (hr : ∀ c ∈ blocks s, ∀ p, i ≤ p → p < i + n → ¬ covers c p) : Inv (addRange s i n) := by
+/-- The original `buddy_add_range` preserves the invariant only for ranges that overlap no
+managed page (and `bug_breaks_invariant` below shows the hypothesis is needed). -/
+theorem addRangeV1_inv {s : St} {i n : Nat} (h : Inv s)
+    (hr : ∀ c ∈ blocks s, ∀ p, i ≤ p → p < i + n → ¬ covers c p) : Inv (addRangeV1 s i n) := by
+  unfold addRangeV1
+  exact addLoopV1_inv _ _ s i (Nat.min_le_right _ _) h
+    (fun c hc p h1 h2 => hr c hc p h1 (by have := Nat.min_le_left (i + n) s.npages; omega))
+
+theorem shrink_le : ∀ (o : Nat) (s : St) (i : Nat), shrink s i o ≤ o
+  | 0, _, _ => Nat.le_refl _
+  | o + 1, s, i => by
+    simp only [shrink]; split
+    · have := shrink_le o s i; omega
+    · exact Nat.le_refl _
+
+theorem shrink_spec : ∀ (o : Nat) (s : St) (i : Nat),
+    shrink s i o = 0 ∨ hasHeadIn s i (2 ^ shrink s i o) = false
+  | 0, _, _ => Or.inl rfl
+  | o + 1, s, i => by
+    simp only [shrink]; split
+    · exact shrink_spec o s i
+    · rename_i h; right; simpa using h
+
+/-- a candidate block that no existing block contains the start of, and in which no existing
+block starts, is disjoint from every existing block -/
+theorem candidate_disj {s : St} {i o : Nat} (hc : coverEnd s i = none)
+    (hh : o = 0 ∨ hasHeadIn s i (2 ^ o) = false) : ∀ c ∈ blocks s, Disj ⟨i, o⟩ c := by
+  intro c hcm
+  have hnc : ¬ (c.idx ≤ i ∧ i < c.idx + 2 ^ c.ord) := by
+    intro h
+    unfold coverEnd at hc
+    rw [Option.map_eq_none_iff, List.find?_eq_none] at hc
+    exact absurd (hc c hcm) (by simpa using h)
+  have hnh : ¬ (i < c.idx ∧ c.idx < i + 2 ^ o) := by
+    intro h
+    rcases hh with rfl | hh
+    · simp at h; omega
+    · unfold hasHeadIn at hh
+      rw [List.any_eq_false] at hh
+      exact hh c hcm (by simp; omega)
+  unfold Disj; simp only
+  have := pow_pos' c.ord; have := pow_pos' o
+  omega
+
+theorem addLoop_inv : ∀ (fuel : Nat) (e : Nat) (s : St) (i : Nat),
+    e ≤ s.npages → Inv s → Inv (addLoop e fuel s i)
+  | 0, _, s, _, _, h => h
+  | fuel + 1, e, s, i, he, h => by
+    simp only [addLoop]
+    split
+    · rename_i hi
+      split
+      · exact addLoop_inv fuel e s _ he h
+      · rename_i hcov
+        have ⟨f1, f2, f3⟩ := fitOrder_spec ORDERS i e 0 (by unfold ORDERS; omega) (Nat.one_dvd _) (by simp; omega)
+        generalize fitOrder i e ORDERS 0 = o' at f1 f2 f3
+        have hle := shrink_le o' s i
+        have hsp := shrink_spec o' s i
+        generalize shrink s i o' = o at hle hsp
+        have g1 : o < ORDERS := by omega
+        have g2 : 2 ^ o ∣ i := Nat.dvd_trans (Nat.pow_dvd_pow 2 hle) f2
+        have g3 : i + 2 ^ o ≤ e := by have := Nat.pow_le_pow_right (by omega : 0 < 2) hle; omega
+        have hfb := freeBlock_inv ORDERS { s with managed := s.managed + 2 ^ o } i o
+          (by unfold ORDERS; omega) ⟨h.1.wf, h.1.pw, h.1.fp, h.1.coal⟩ ⟨g1, g2, by simp; omega⟩
+          (candidate_disj hcov hsp) (by simp [h.2])
+        exact addLoop_inv fuel e _ _ (by rw [freeBlock_npages]; simpa using he) hfb
+    · exact h
+
+/-- **`buddy_add_range` (fixed, orbit-os `1a8385b`) preserves the invariant for every range**,
+including ranges that overlap managed (free or allocated) pages: no hypothesis needed. -/
+theorem addRange_inv {s : St} {i n : Nat} (h : Inv s) : Inv (addRange s i n) := by
   unfold addRange
   exact addLoop_inv _ _ s i (Nat.min_le_right _ _) h
-    (fun c hc p h1 h2 => hr c hc p h1 (by have := Nat.min_le_left (i + n) s.npages; omega))
 
 theorem init_inv (n : Nat) : Inv (St.init n) := by
   refine ⟨⟨?_, ?_, rfl, ?_⟩, rfl⟩
@@ -898,9 +994,12 @@ metadata byte of the *head* page of each candidate block. A range that starts in
 existing free block passes the check, so its pages are inserted a second time.
 `mm_init` never issues overlapping adds, so the kernel does not hit this today; the API comment
 claims overlapping adds are handled. The differential test reproduces the same behaviour in
-the C code (`tests/test_buddy_diff.py::test_overlapping_add_range_bug`). -/
+the C code at that commit.
 
-def bugState : St := addRange (addRange (St.init 4) 0 4) 1 1
+Fixed in orbit-os `1a8385b`; the theorems below are about the original algorithm (`addRangeV1`)
+and stay as the record of the counterexample. -/
+
+def bugState : St := addRangeV1 (addRangeV1 (St.init 4) 0 4) 1 1
 
 theorem bug_state_free : bugState.free = [⟨0, 2⟩, ⟨1, 0⟩] ∧ bugState.freePages = 5 := by decide
 
@@ -914,5 +1013,13 @@ theorem bug_breaks_invariant : ¬ Inv bugState := by
 /-- after the bad add, two live allocations overlap: page 1 is handed out twice -/
 theorem bug_double_allocation :
     (alloc bugState 0).1 = some 1 ∧ (alloc (alloc bugState 0).2 2).1 = some 0 := by decide
+
+/-- the same sequence on the fixed `buddy_add_range`: the second add is ignored -/
+def fixedState : St := addRange (addRange (St.init 4) 0 4) 1 1
+
+theorem fixed_state_free : fixedState.free = [⟨0, 2⟩] ∧ fixedState.freePages = 4 := by decide
+
+theorem fixed_no_double_allocation :
+    (alloc fixedState 0).1 = some 0 ∧ (alloc (alloc fixedState 0).2 2).1 = none := by decide
 
 end Buddy

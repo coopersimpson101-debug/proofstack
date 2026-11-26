@@ -1,7 +1,8 @@
 /-!
 # orbit-os stage-1 page tables: model and proofs
 
-A model of `map_range` / `mmu_init` in orbit-os `kernel/mm/mmu.c` (4 KiB granule, 48-bit VA,
+A model of `map_range` (`a64pt_map` in `kernel/lib/a64pt.c` since orbit-os `1a8385b`) and
+`mmu_init` (`kernel/arch/aarch64/mmu.c`) of orbit-os (4 KiB granule, 48-bit VA,
 four levels L0..L3, 2 MiB block descriptors at L2 where alignment allows, never overwriting a
 valid entry).
 
@@ -104,11 +105,20 @@ def mapLoop : Nat → PT → Nat → Nat → Nat → Nat → PT
       mapLoop fuel r.1 (va + r.2) (pa + r.2) endv prot
     else t
 
-/-- `map_range(l0, va, pa, size, prot)` -/
-def mapRange (t : PT) (va pa size prot : Nat) : PT :=
+/-- the original `map_range` (orbit-os ≤ `49ede1e`): end = ALIGN_DOWN(va) + ALIGN_UP(size);
+kept as the record of the unaligned-range bug -/
+def mapRangeV1 (t : PT) (va pa size prot : Nat) : PT :=
   let va' := va / SZ4K * SZ4K
   let pa' := pa / SZ4K * SZ4K
   let endv := va' + (size + SZ4K - 1) / SZ4K * SZ4K
+  mapLoop ((endv - va') / SZ4K + 1) t va' pa' endv prot
+
+/-- `map_range(l0, va, pa, size, prot)` = `a64pt_map` of orbit-os `1a8385b`:
+end = ALIGN_UP(va + size), computed before va is rounded down -/
+def mapRange (t : PT) (va pa size prot : Nat) : PT :=
+  let va' := va / SZ4K * SZ4K
+  let pa' := pa / SZ4K * SZ4K
+  let endv := (va + size + SZ4K - 1) / SZ4K * SZ4K
   mapLoop ((endv - va') / SZ4K + 1) t va' pa' endv prot
 
 /-! ## Index arithmetic -/
@@ -317,32 +327,59 @@ theorem mapRange_spec (t : PT) (va pa size prot : Nat) (hva : va % SZ4K = 0) (hp
   unfold mapRange
   have e1 : va / SZ4K * SZ4K = va := Nat.div_mul_cancel (Nat.dvd_of_mod_eq_zero hva)
   have e2 : pa / SZ4K * SZ4K = pa := Nat.div_mul_cancel (Nat.dvd_of_mod_eq_zero hpa)
-  have e3 : (size + SZ4K - 1) / SZ4K * SZ4K = size := by
-    have : (size + SZ4K - 1) / SZ4K = size / SZ4K := by unfold SZ4K at *; omega
-    rw [this]; exact Nat.div_mul_cancel (Nat.dvd_of_mod_eq_zero hs)
+  have e3 : (va + size + SZ4K - 1) / SZ4K * SZ4K = va + size := by
+    unfold SZ4K at hva hs ⊢; omega
   rw [e1, e2, e3]
   exact mapLoop_spec _ t va pa (va + size) prot hva hpa (by unfold SZ4K at *; omega) hlim
     (Nat.le_refl _) x hx
 
-/-- For unaligned arguments the C code maps `[ALIGN_DOWN(va), ALIGN_DOWN(va) + ALIGN_UP(size))`,
-which can miss the last page the range touches. -/
-theorem mapRange_spec_unaligned (t : PT) (va pa size prot : Nat)
+/-- For unaligned arguments the original C code mapped
+`[ALIGN_DOWN(va), ALIGN_DOWN(va) + ALIGN_UP(size))`, which can miss the last page the range
+touches. -/
+theorem mapRangeV1_spec_unaligned (t : PT) (va pa size prot : Nat)
     (hlim : va / SZ4K * SZ4K + (size + SZ4K - 1) / SZ4K * SZ4K ≤ VA48) (x : Nat) (hx : x < VA48) :
-    walk (mapRange t va pa size prot) x =
+    walk (mapRangeV1 t va pa size prot) x =
       if va / SZ4K * SZ4K ≤ x ∧ x < va / SZ4K * SZ4K + (size + SZ4K - 1) / SZ4K * SZ4K ∧ walk t x = none
       then some (pa / SZ4K * SZ4K + (x - va / SZ4K * SZ4K), prot) else walk t x := by
-  unfold mapRange
+  unfold mapRangeV1
   exact mapLoop_spec _ t _ _ _ prot (by unfold SZ4K; omega) (by unfold SZ4K; omega)
     (by unfold SZ4K; omega) hlim (Nat.le_refl _) x hx
 
-/-- **Bug (latent)**: mapping the 4 KiB range `[0x1800, 0x2800)` leaves the page at 0x2000
+/-- **Fixed `map_range`, arbitrary (unaligned) arguments**: it maps exactly the pages that
+`[va, va + size)` touches, i.e. `[ALIGN_DOWN(va), ALIGN_UP(va + size))`, page `x` to the
+corresponding page of `ALIGN_DOWN(pa)`, and leaves every other translation unchanged. -/
+theorem mapRange_spec_unaligned (t : PT) (va pa size prot : Nat)
+    (hlim : (va + size + SZ4K - 1) / SZ4K * SZ4K ≤ VA48) (x : Nat) (hx : x < VA48) :
+    walk (mapRange t va pa size prot) x =
+      if va / SZ4K * SZ4K ≤ x ∧ x < (va + size + SZ4K - 1) / SZ4K * SZ4K ∧ walk t x = none
+      then some (pa / SZ4K * SZ4K + (x - va / SZ4K * SZ4K), prot) else walk t x := by
+  unfold mapRange
+  exact mapLoop_spec _ t _ _ _ prot (by unfold SZ4K; omega) (by unfold SZ4K; omega)
+    (by unfold SZ4K; omega) hlim (by unfold SZ4K; omega) x hx
+
+/-- every byte of an unaligned range that was unmapped is translated after the fixed `map_range` -/
+theorem mapRange_covers (t : PT) (va pa size prot : Nat)
+    (hlim : (va + size + SZ4K - 1) / SZ4K * SZ4K ≤ VA48) (x : Nat) (hx1 : va ≤ x) (hx2 : x < va + size)
+    (hnone : walk t x = none) : walk (mapRange t va pa size prot) x ≠ none := by
+  have hx : x < VA48 := by unfold SZ4K at *; omega
+  rw [mapRange_spec_unaligned t va pa size prot hlim x hx,
+    if_pos ⟨by unfold SZ4K; omega, by unfold SZ4K; omega, hnone⟩]
+  simp
+
+/-- **Bug (latent, fixed in orbit-os `1a8385b`)**, on the original `map_range`: mapping the 4 KiB range `[0x1800, 0x2800)` leaves the page at 0x2000
 unmapped although the range covers its first 0x800 bytes. `mmu_init` passes the DTB's
 address and size unaligned; on the boards supported today the DTB lies inside the RAM window,
-which is mapped as well, so the kernel does not fault. Reproduced on the C code by
-`tests/test_mmu_diff.py::test_unaligned_range_bug`. -/
+which is mapped as well, so the kernel does not fault. Reproduced on the C code of
+orbit-os `ba8bac1`; `tests/test_mmu_diff.py::test_unaligned_range_fixed` is the regression test. -/
 theorem unaligned_bug :
+    walk (mapRangeV1 empty 0x1800 0x1800 0x1000 1) 0x1800 = some (0x1800, 1) ∧
+    walk (mapRangeV1 empty 0x1800 0x1800 0x1000 1) 0x2000 = none := by
+  constructor <;> rfl
+
+/-- the same mapping with the fixed `map_range` (orbit-os `1a8385b`) covers both pages -/
+theorem unaligned_fixed :
     walk (mapRange empty 0x1800 0x1800 0x1000 1) 0x1800 = some (0x1800, 1) ∧
-    walk (mapRange empty 0x1800 0x1800 0x1000 1) 0x2000 = none := by
+    walk (mapRange empty 0x1800 0x1800 0x1000 1) 0x27ff = some (0x27ff, 1) := by
   constructor <;> rfl
 
 /-! ## Sequences of mappings (first mapping wins) -/
@@ -576,13 +613,18 @@ theorem mapRange_kva (t : PT) (va pa size prot : Nat) :
   rw [hk]
   have e1 : (va + VA48 * 65535) / SZ4K * SZ4K = va / SZ4K * SZ4K + VA48 * 65535 := by
     unfold SZ4K VA48; omega
-  rw [e1]
+  have e2 : (va + VA48 * 65535 + size + SZ4K - 1) / SZ4K * SZ4K =
+      (va + size + SZ4K - 1) / SZ4K * SZ4K + VA48 * 65535 := by
+    have hk4 : (VA48 * 65535) % SZ4K = 0 := by unfold VA48 SZ4K; rfl
+    clear e1 hk
+    generalize VA48 * 65535 = K at hk4 ⊢
+    unfold SZ4K at hk4 ⊢; omega
+  rw [e1, e2]
   generalize va / SZ4K * SZ4K = A
-  generalize (size + SZ4K - 1) / SZ4K * SZ4K = B
+  generalize (va + size + SZ4K - 1) / SZ4K * SZ4K = E
   generalize hK : VA48 * 65535 = K
-  have e2 : A + K + B = A + B + K := by omega
-  have e3 : A + B + K - (A + K) = A + B - A := by omega
-  rw [e2, e3, ← hK]
+  have e3 : E + K - (A + K) = E - A := by omega
+  rw [e3, ← hK]
   exact mapLoop_shift _ t _ _ _ prot 65535
 
 /-- the TTBR1 region list of `mmu_init` (higher-half linear alias of RAM and MMIO) -/

@@ -69,12 +69,13 @@ def test_random_layouts():
         check_layout(L)
 
 
-def test_unaligned_dtb_outside_ram_loses_last_page():
-    """mmu_init with a DTB outside the mapped RAM at an unaligned address: the C code leaves the
-    last page of the blob unmapped (Lean: Mmu.mapRange_spec_unaligned, Mmu.unaligned_bug)."""
+def test_unaligned_dtb_outside_ram_is_fully_mapped():
+    """mmu_init with a DTB outside the mapped RAM at an unaligned address. orbit-os <= 49ede1e
+    left the last page of the blob unmapped (found here; Lean: Mmu.unaligned_bug); since
+    1a8385b every page the blob touches is mapped (Mmu.mapRange_spec_unaligned)."""
     L = dict(QEMU_VIRT, rams=64 << 20, dtb=0x4F000800, dtbs=0x1000)
     lo_regs, _ = layout_regions(L)
     out = parse_dumps(run([c_mmu()], [layout_cmd(L), "dump lo 4f000000 4f004000"]))
     want = intended_runs(lo_regs, 0x4F000000, 0x4F004000)
     assert want == [(0x4F000000, 0x4F000000, 2, PROTS["KRO"])]
-    assert out == [[(0x4F000000, 0x4F000000, 1, PROTS["KRO"])]]
+    assert out == [want]

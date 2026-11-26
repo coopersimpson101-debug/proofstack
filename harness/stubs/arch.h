@@ -3,6 +3,7 @@
 #ifndef ORBIT_ARCH_H
 #define ORBIT_ARCH_H
 #include <stdint.h>
+#define KERNEL_VA_BASE 0xffff000000000000ULL
 #define read_sysreg(r) ((uint64_t)0)
 #define write_sysreg(r, v) ((void)(v))
 static inline void isb(void) {}

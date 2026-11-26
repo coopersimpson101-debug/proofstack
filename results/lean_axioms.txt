@@ -4,8 +4,11 @@
 'Buddy.alloc_free_roundtrip' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Buddy.no_overlap' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Buddy.bug_double_allocation' depends on axioms: [propext]
+'Buddy.fixed_no_double_allocation' depends on axioms: [propext]
 'Mmu.mapRange_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Mmu.ttbr0_separation' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Mmu.mapRange_kva' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Mmu.mapRange_spec_unaligned' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Mmu.unaligned_bug' does not depend on any axioms
+'Mmu.unaligned_fixed' does not depend on any axioms
 'Mmu.wx_all' depends on axioms: [propext]

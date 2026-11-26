@@ -3,7 +3,7 @@
 
     python harness/build.py --orbit-os PATH/TO/orbit-os [--out build/harness]
 
-`buddy.c` is compiled unmodified. `mmu.c` is copied with exactly its three inline-asm
+`buddy.c` and `lib/a64pt.c` are compiled unmodified. `arch/aarch64/mmu.c` is copied with exactly its three inline-asm
 statements removed (TLBI / IC IALLU maintenance and the AT S1E1R probe in mmu_translate):
 they cannot be assembled for x86-64 and do not read or write page-table memory.  The
 generated kernel.h is the real one with the linker-script `extern char sym[]` declarations
@@ -35,7 +35,12 @@ def build(orbit: Path, out: Path) -> dict:
     inc = orbit / "kernel" / "include"
     gen = out / "gen"
     gen.mkdir(exist_ok=True)
-    mmu = (orbit / "kernel" / "mm" / "mmu.c").read_text(encoding="utf-8")
+    mmu_src = orbit / "kernel" / "arch" / "aarch64" / "mmu.c"
+    a64pt = orbit / "kernel" / "lib" / "a64pt.c"
+    if not (mmu_src.exists() and a64pt.exists()):
+        raise SystemExit("expected orbit-os with kernel/arch/aarch64/mmu.c and kernel/lib/a64pt.c "
+                         "(the commit pinned in CI); older layouts are not supported")
+    mmu = mmu_src.read_text(encoding="utf-8")
     stripped, n = ASM.subn("/* inline asm removed for the host build */;", mmu)
     if n != 3:
         raise SystemExit(f"expected exactly 3 inline-asm statements in mmu.c, found {n}")
@@ -55,14 +60,15 @@ def build(orbit: Path, out: Path) -> dict:
         "buddy_driver": zig() + ["cc", *flags, f"-I{inc}", str(HERE / "buddy_driver.c"),
                                  str(orbit / "kernel" / "mm" / "buddy.c"), "-o", str(out / f"buddy_driver{exe}")],
         "mmu_driver": zig() + ["cc", *flags, f"-I{HERE / 'stubs'}", f"-I{gen}", f"-I{inc}",
-                               str(HERE / "mmu_driver.c"), "-o", str(out / f"mmu_driver{exe}")],
+                               str(HERE / "mmu_driver.c"), str(a64pt), "-o", str(out / f"mmu_driver{exe}")],
     }
     for name, cmd in cmds.items():
         r = subprocess.run(cmd, capture_output=True, text=True)
         if r.returncode:
             raise SystemExit(f"{name} failed:\n{r.stdout}{r.stderr}")
     src = {p: hashlib.sha256((orbit / p).read_bytes()).hexdigest()[:16]
-           for p in ["kernel/mm/buddy.c", "kernel/mm/mmu.c", "kernel/include/buddy.h", "kernel/include/list.h"]}
+           for p in ["kernel/mm/buddy.c", "kernel/arch/aarch64/mmu.c", "kernel/lib/a64pt.c",
+                     "kernel/include/buddy.h", "kernel/include/list.h"]}
     return {"buddy_driver": str(out / f"buddy_driver{exe}"), "mmu_driver": str(out / f"mmu_driver{exe}"),
             "sources": src}
 

@@ -77,11 +77,12 @@ def test_prot_constants_match_model():
     assert [int(x, 16) for x in out] == list(PROTS.values())
 
 
-def test_unaligned_range_bug():
-    """map_range(va=0x1800, size=0x1000) misses the page at 0x2000 (Lean: Mmu.unaligned_bug)."""
+def test_unaligned_range_fixed():
+    """map_range(va=0x1800, size=0x1000) used to miss the page at 0x2000 (orbit-os <= 49ede1e,
+    Lean: Mmu.unaligned_bug on mapRangeV1); fixed in orbit-os 1a8385b (Mmu.unaligned_fixed)."""
     k = PROTS["KDATA"]
-    cmds = ["reset", f"map 1800 1800 1000 {k:x}", "query lo 1800", "query lo 27ff"]
-    want = [f"1800 1800 {k:x}", "27ff fault"]
+    cmds = ["reset", f"map 1800 1800 1000 {k:x}", "query lo 1800", "query lo 27ff", "query lo 3000"]
+    want = [f"1800 1800 {k:x}", f"27ff 27ff {k:x}", "3000 fault"]
     assert answers(run([c_mmu()], cmds)) == want
     assert answers(run([lean_model(), "mmu"], cmds)) == want
 

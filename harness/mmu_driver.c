@@ -1,7 +1,7 @@
 /* Host driver for orbit-os kernel/mm/mmu.c.
  *
- * build.py compiles this file with the orbit-os mmu.c #included verbatim except for its three
- * inline-asm statements (TLB/I-cache maintenance and the AT S1E1R probe), which cannot be
+ * build.py compiles this file with the orbit-os kernel/arch/aarch64/mmu.c #included verbatim
+ * (linked with the portable kernel/lib/a64pt.c it calls) except for its three inline-asm statements (TLB/I-cache maintenance and the AT S1E1R probe), which cannot be
  * assembled for the host and do not touch the page tables. System-register accessors come
  * from harness/stubs/arch.h; linker-script symbols and `plat` are set at run time.
  *
@@ -44,6 +44,8 @@ void kfree(void *p) { free(p); }
 void kprintf(const char *fmt, ...) { (void)fmt; }
 
 #define DESC_ATTRS (~PTE_ADDR_MASK & ~3ULL)
+#define DRV_4K 0x1000ULL
+#define DRV_2M 0x200000ULL
 
 /* returns 1 and sets pa and attrs if va is mapped through root */
 static int walk(const uint64_t *root, uint64_t va, uint64_t *pa, uint64_t *attrs)
@@ -64,7 +66,7 @@ static int walk(const uint64_t *root, uint64_t va, uint64_t *pa, uint64_t *attrs
         if (!(d & PTE_TABLE)) {
             if (level != 2)
                 return 0; /* this code never makes L0/L1 blocks */
-            *pa = (d & PTE_ADDR_MASK & ~(SZ_2M - 1)) | (va & (SZ_2M - 1));
+            *pa = (d & PTE_ADDR_MASK & ~(DRV_2M - 1)) | (va & (DRV_2M - 1));
             *attrs = d & DESC_ATTRS;
             return 1;
         }
@@ -76,10 +78,10 @@ static int walk(const uint64_t *root, uint64_t va, uint64_t *pa, uint64_t *attrs
 static void dump(const uint64_t *root, uint64_t lo, uint64_t hi)
 {
     uint64_t rva = 0, rpa = 0, rn = 0, rat = 0;
-    for (uint64_t va = lo; va < hi; va += SZ_4K) {
+    for (uint64_t va = lo; va < hi; va += DRV_4K) {
         uint64_t pa, at;
         if (walk(root, va, &pa, &at)) {
-            if (rn && va == rva + rn * SZ_4K && pa == rpa + rn * SZ_4K && at == rat) {
+            if (rn && va == rva + rn * DRV_4K && pa == rpa + rn * DRV_4K && at == rat) {
                 rn++;
                 continue;
             }
@@ -88,7 +90,7 @@ static void dump(const uint64_t *root, uint64_t lo, uint64_t hi)
                        (unsigned long long)rn, (unsigned long long)rat);
             rva = va, rpa = pa, rn = 1, rat = at;
         }
-        if (va + SZ_4K < va)
+        if (va + DRV_4K < va)
             break;
     }
     if (rn)
