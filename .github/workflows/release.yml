@@ -15,18 +15,18 @@ jobs:
   python-dist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { ref: "${{ github.event.inputs.tag || github.ref }}" }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "3.12" }
       - run: pip install build && python -m build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: dist, path: dist/* }
 
   lean-model:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { ref: "${{ github.event.inputs.tag || github.ref }}" }
       - run: |
           curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
@@ -34,33 +34,33 @@ jobs:
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
       - working-directory: lean
         run: lake build && cp .lake/build/bin/orbitmodel ../orbitmodel-linux-x86_64
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: orbitmodel, path: orbitmodel-linux-x86_64 }
 
   tlc-results:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { ref: "${{ github.event.inputs.tag || github.ref }}" }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "3.12" }
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with: { distribution: temurin, java-version: "21" }
       - run: curl -fsSL -o tla2tools.jar "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
       - env: { TLA2TOOLS: tla2tools.jar, TLC_WORKERS: "4" }
         run: python scripts/run_tlc.py --xcheck mut-vote-any-log mut-figure8 && tar czf tlc-results.tar.gz results/tlc tla
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: tlc, path: tlc-results.tar.gz }
 
   publish:
     needs: [python-dist, lean-model, tlc-results]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { ref: "${{ github.event.inputs.tag || github.ref }}" }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { path: artifacts }
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           body_path: .github/release/${{ github.event.inputs.tag || github.ref_name }}.md
