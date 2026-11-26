@@ -246,7 +246,7 @@ specifies. To close the loop on real hardware (⏳):
 - Trace validation directly in TLC (trace spec + `-dump`) as a second, independent checker.
 - Prove the raw descriptor encoding (`pa | prot | VALID | TABLE`) with `bv_decide` and lift the table
   pool into the model; prove `kheap.c` on top of the buddy model.
-- Upstream the two orbit-os fixes and add regression tests there.
+- ~~Upstream the two orbit-os fixes and add regression tests there.~~ Done: [orbit-os PR #6](https://github.com/coopersimpson101-debug/orbit-os/pull/6), released in orbit-os v0.2.0.
 
 Downloaded tools (official sources only): Eclipse Temurin JDK 21 (api.adoptium.net), `tla2tools.jar`
 v1.7.4 (github.com/tlaplus/tlaplus releases), elan 4.4.0 and Lean 4.35.0 (github.com/leanprover/elan,
