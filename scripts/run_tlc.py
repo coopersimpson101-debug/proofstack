@@ -62,12 +62,21 @@ def parse(out: str) -> dict:
     return d
 
 
+def tla2tools_jar() -> str:
+    """Absolute path of tla2tools.jar. TLC runs with cwd=tla/, so a relative TLA2TOOLS path
+    (as in CI: `TLA2TOOLS=tla2tools.jar`) must be resolved against the caller's directory."""
+    jar = Path(os.environ.get("TLA2TOOLS", "tla2tools.jar")).expanduser().resolve()
+    if not jar.is_file():
+        raise SystemExit(f"tla2tools.jar not found at {jar} (set TLA2TOOLS)")
+    return str(jar)
+
+
 def run(name: str, workers: int, timeout: float | None = None) -> dict:
     (TLA / "models").mkdir(exist_ok=True)
     cfg = TLA / "models" / f"{name}.cfg"
     cfg.write_text(cfg_text(name), encoding="utf-8", newline="\n")
     java = os.environ.get("JAVA", "java")
-    jar = os.environ.get("TLA2TOOLS", "tla2tools.jar")
+    jar = tla2tools_jar()
     with tempfile.TemporaryDirectory() as meta:
         cmd = [java, "-XX:+UseParallelGC", "-cp", jar, "tlc2.TLC", "-workers", str(workers),
                "-metadir", meta, "-config", str(cfg), "-deadlock"]
@@ -79,6 +88,8 @@ def run(name: str, workers: int, timeout: float | None = None) -> dict:
         try:
             p = subprocess.run(cmd, cwd=TLA, capture_output=True, text=True, timeout=timeout)
             out, rc = p.stdout + p.stderr, p.returncode
+        except FileNotFoundError:
+            raise SystemExit(f"cannot run Java ({java!r}); set JAVA or put java on PATH")
         except subprocess.TimeoutExpired as e:
             out = ((e.stdout or b"").decode() if isinstance(e.stdout, bytes) else (e.stdout or ""))
             out += f"\n*** stopped by run_tlc.py after {timeout:.0f} s (incomplete) ***\n"
@@ -115,6 +126,10 @@ def main():
         else:
             ok = d["no_error"]
         print(f"{'OK  ' if ok else 'FAIL'} {n}: {d}", flush=True)
+        if not ok:   # make failures diagnosable from the CI log alone
+            tail = (RES / f"{n}.log").read_text(encoding="utf-8").splitlines()[-25:]
+            print(f"---- last lines of TLC output for {n} (results/tlc/{n}.log) ----", flush=True)
+            print("\n".join(tail), flush=True)
         rc |= not ok
     return rc
 

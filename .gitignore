@@ -23,3 +23,6 @@ traces/
 .idea/
 .DS_Store
 Thumbs.db
+
+# TLC (downloaded in CI to the repo root)
+tla2tools.jar
