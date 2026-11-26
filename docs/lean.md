@@ -3,7 +3,7 @@
 Lean 4.35.0, no Mathlib, no `sorry` / `admit` / `native_decide`; `results/lean_axioms.txt` lists
 the axioms the headline theorems depend on (only Lean's standard `propext`, `Classical.choice`,
 `Quot.sound`). The code under verification is orbit-os
-`1a8385b07ccd95ecef07be80a916c75073fb171e` (branch `fix/buddy-overlap-map-range`, which fixes the
+`1a8385b07ccd95ecef07be80a916c75073fb171e` (merged into orbit-os main for its v0.2.0 release, which fixes the
 two bugs below): `kernel/mm/buddy.c`, `kernel/lib/a64pt.c` (the page-table builder, moved out of
 `kernel/arch/aarch64/mmu.c` by that commit) and `mmu_init` in `mmu.c`. The bugs were found on
 `main` at `ba8bac1`; the original algorithms stay in the model as `addRangeV1` / `mapRangeV1`, with
@@ -37,7 +37,7 @@ block has its buddy free at the same order (complete coalescing); and
 | `bug_state_free`, `bug_breaks_invariant`, `bug_double_allocation` | the overlapping-add bug on `addRangeV1`, below |
 | `fixed_state_free`, `fixed_no_double_allocation` | the same sequence on the fixed `addRange`: 4 free pages, one order-2 block, no second allocation |
 
-### Bug found: overlapping `buddy_add_range` double-manages pages (fixed in orbit-os `1a8385b` (branch `fix/buddy-overlap-map-range`))
+### Bug found: overlapping `buddy_add_range` double-manages pages (fixed in orbit-os `1a8385b` (merged into orbit-os main for its v0.2.0 release))
 
 `buddy_add_range`'s comment says overlapping adds are skipped ("already managed"), but the check
 only looks at the metadata byte of each candidate block's *head* page. A range that starts inside a
@@ -49,7 +49,7 @@ the same, and random overlapping adds made the C driver crash on its corrupted i
 `mm_init` only adds the disjoint holes between sorted reserved ranges, so the kernel does not hit
 this today — it was a latent API bug.
 
-**Fix** (orbit-os `1a8385b` (branch `fix/buddy-overlap-map-range`)): `buddy_add_range` skips a page that lies inside a managed block
+**Fix** (orbit-os `1a8385b` (merged into orbit-os main for its v0.2.0 release)): `buddy_add_range` skips a page that lies inside a managed block
 (found from the naturally aligned candidate head at each order), and shrinks a candidate block
 while some block head lies inside it. A candidate that starts in no block and contains no block
 head overlaps no block, which is what lets `addRange_inv` drop its hypothesis. Regression tests:
@@ -78,7 +78,7 @@ arguments, and `walk` is the stage-1 translation.
 | `mapRange_kva`, `walk_shift` | the TTBR1 higher-half alias (`0xffff_0000_0000_0000 + pa`) behaves like the same mapping at `pa` |
 | `ttbr1_el1_only`, `wx_all`, `el0_flags` | no TTBR1 page is EL0-accessible; every attribute set the kernel uses is W^X at EL1 and EL0 |
 
-### Bug found (latent): unaligned ranges lose their last page (fixed in orbit-os `1a8385b` (branch `fix/buddy-overlap-map-range`))
+### Bug found (latent): unaligned ranges lose their last page (fixed in orbit-os `1a8385b` (merged into orbit-os main for its v0.2.0 release))
 
 `map_range` aligns `va` down but computes the end as `ALIGN_DOWN(va) + ALIGN_UP(size)`, so
 `map_range(0x1800, size 0x1000)` maps only the page at 0x1000 although the range also covers
@@ -87,7 +87,7 @@ today the DTB lies inside RAM, which is mapped too, so nothing faults. With the 
 mapped RAM at an unaligned address, the real `mmu_init` leaves the blob's last page unmapped
 (shown at orbit-os `ba8bac1` by the bounded check of the real `mmu_init`).
 
-**Fix** (orbit-os `1a8385b` (branch `fix/buddy-overlap-map-range`)): `end = ALIGN_UP(va + size, 4K)` is computed before `va` is aligned;
+**Fix** (orbit-os `1a8385b` (merged into orbit-os main for its v0.2.0 release)): `end = ALIGN_UP(va + size, 4K)` is computed before `va` is aligned;
 the builder moved to the portable `kernel/lib/a64pt.c` with its own host test
 (`tests/test_a64pt.c`). The rv64 port's `sv39_map` already computed the end this way.
 Regression tests here: `test_unaligned_range_fixed` and

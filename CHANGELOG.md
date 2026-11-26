@@ -2,10 +2,10 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.1] - 2026-11-26
 
 ### Changed
-- Pinned orbit-os to `1a8385b` (branch `fix/buddy-overlap-map-range`), which fixes the two bugs
+- Pinned orbit-os to `1a8385b` (merged into orbit-os main for its v0.2.0 release), which fixes the two bugs
   proofstack found; the harness also builds `kernel/lib/a64pt.c`, where the AArch64 page-table
   builder now lives.
 - Lean: `addRange` and `mapRange` model the fixed C code; the original algorithms are kept as
@@ -38,5 +38,5 @@ First public release.
   (raftstore, safe); the current-term commit rule is almost redundant given the leader no-op
   (raftstore, observation).
 
-[Unreleased]: https://github.com/coopersimpson101-debug/proofstack/compare/v0.1.0...HEAD
+[0.1.1]: https://github.com/coopersimpson101-debug/proofstack/releases/tag/v0.1.1
 [0.1.0]: https://github.com/coopersimpson101-debug/proofstack/releases/tag/v0.1.0

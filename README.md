@@ -209,7 +209,7 @@ windows (2.1 M pages for qemu-virt) equals the intended mapping.
 
 Both orbit-os bugs were found on orbit-os `ba8bac1` and are fixed in orbit-os
 [`1a8385b`](https://github.com/coopersimpson101-debug/orbit-os/commit/1a8385b07ccd95ecef07be80a916c75073fb171e)
-(branch `fix/buddy-overlap-map-range`), which proofstack now pins. The Lean model keeps the original
+(merged into orbit-os main for its v0.2.0 release), which proofstack now pins. The Lean model keeps the original
 algorithms (`addRangeV1`, `mapRangeV1`) and the theorems that exhibit the bugs; with the fix,
 `Buddy.addRange_inv` holds for every range, without the non-overlap hypothesis it needed before.
 

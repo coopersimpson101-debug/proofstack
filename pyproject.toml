@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proofstack"
-version = "0.1.0"
+version = "0.1.1"
 description = "TLA+ model checking and trace validation of raftstore's Raft; Lean proofs of orbit-os's buddy allocator and page tables"
 readme = "README.md"
 license = { text = "MIT" }
